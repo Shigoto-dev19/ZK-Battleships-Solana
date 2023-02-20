@@ -26,7 +26,7 @@ npm run ptau
 npm run setup
 ```
 
-### 4. Use entire local test suite (circom_tester, snarkjs integration testing, erc2771 integration testing)
+### 4. Use entire local test suite (circom_tester, snarkjs integration testing)
 ```
 npm test
 ```
