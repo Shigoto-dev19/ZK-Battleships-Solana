@@ -1,0 +1,31 @@
+{
+  "name": "zk-battleships-solana",
+  "version": "1.0.0",
+  "description": "ZK Battleship Simulation",
+  "main": "index.ts",
+  "scripts": {
+    "test": "ts-mocha --timeout 500000 ./test/*.test.ts",
+    "circom:dev": "hardhat circom --deterministic --verbose",
+    "clean-setup": "rm -r ./circuits/artifacts/setup",
+    "ptau": "./scripts/ptau.sh",
+    "setup": "./scripts/circuits.sh"
+  },
+  "keywords": [
+    "Battleship",
+    "ZKP",
+    "Game"
+  ],
+  "author": "Shigoto-dev19",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/mocha": "^10.0.1",
+    "circom_tester": "^0.0.19",
+    "circomlib": "^2.0.5",
+    "circomlibjs": "^0.1.7",
+    "ffjavascript": "^0.2.57",
+    "fs": "^0.0.1-security",
+    "snarkjs": "^0.6.1",
+    "ts-mocha": "^10.0.0",
+    "ts-node": "^10.9.1"
+  }
+}
