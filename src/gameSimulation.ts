@@ -1,14 +1,31 @@
-import { 
-    verificationKeys, 
+import {  
     snarkjs,
     buildMimcSponge,
-    initialize
+    fs
 } from './utils';
 
-type Board = Array<Array<string>>;
 type Binary = 0 | 1;
 interface shot { [key: number]: Array<number> }
 interface hit { [key: number]: Binary }
+
+interface host_BoardData {
+    boardHash: Uint8Array;
+    host_address: string;
+    board_proof: Array<string>;
+}
+interface joiner_BoardData {
+    gameID: number;
+    boardHash: Uint8Array;
+    joiner_address: string;
+    board_proof: Array<string>;
+}
+interface player_TurnData {
+    gameID: number;
+    _hit: Binary; 
+    _shot: Array<number>; 
+    shot_proof: Array<string>;
+}
+
 
 interface Game {
     // the two players in the game
@@ -33,6 +50,10 @@ interface games { [key: number] : Game }
 class GameSimulation {
     
     private HIT_MAX = 17;
+    static F: any;
+    public vkey_board_path: string;
+    public vkey_shot_path: string;
+    public verificationKeys: any;
     static games: games = {};
     public gameIndex = 0;
     public gameData: Game = {
@@ -46,93 +67,103 @@ class GameSimulation {
         winner: ""
     };
 
-    async hash_board(board: Board) {
-        // this method is to be deleted
-
-        // instantiate mimc sponge on bn254 curve 
+    constructor(vkey_board_path: string, vkey_shot_path: string ) {
+        
+        this.vkey_board_path = vkey_board_path;
+        this.vkey_shot_path = vkey_shot_path;
+        // verification key json files
+        this.verificationKeys = {
+            board: JSON.parse(fs.readFileSync(vkey_board_path)),
+            shot: JSON.parse(fs.readFileSync(vkey_shot_path))
+        }
+    }
+    /**
+     * Initialize new environment for interacting with ZK-Battleship game contracts
+     * 
+     * @returns {Object} :
+     *  - game: ZK-Battleship game simulation object
+     *  - mimcSponge: initialized MiMC Sponge ZK-Friendly hash function object from circomlibjs
+     *  - boardHashes: hashed versions of alice/ bob boards
+     *  - F: initialized ffjavascript BN254 curve object derived from mimcSponge
+     */
+    static async initialize() {
+        
+        // verification keys paths
+        const vkey_board_path = 'circuits/artifacts/board_verification_key.json';
+        const vkey_shot_path = 'circuits/artifacts/shot_verification_key.json';
+        
+        // instantiate mimc sponge on bn254 curve + store ffjavascript obj reference
         const mimcSponge = await buildMimcSponge();
+        GameSimulation.F = mimcSponge.F;
+
+        // instantiate a gameSimulation
+        const game = new GameSimulation(vkey_board_path, vkey_shot_path);
         
-        // store board hashes for quick use
-        const boardHash = await mimcSponge.multiHash(board.flat());
-        
-        return boardHash  
+        return game
     }
 
-    async verifyBoardProof(boardHash: Uint8Array, proof: Array<string>) {
+    async verifyBoardProof(boardHash: Uint8Array, board_proof: Array<string>) {
     
-        // ffjavascript obj reference
-        const {F} = await initialize();
-        
-        const publicSignals = [F.toObject(boardHash).toString()]
+        const publicSignals = [GameSimulation.F.toObject(boardHash).toString()]
 
         // verify proof locally
         const result_board = await snarkjs.groth16.verify(
-            verificationKeys.board,
+            this.verificationKeys.board,
             publicSignals,
-            proof
+            board_proof
         );
 
         return result_board
     }
 
-    async verifyShotProof(boardHash: Uint8Array, shot: Array<number>, hit: Binary, proof: Array<string>) {
+    async verifyShotProof(boardHash: Uint8Array, shot: Array<number>, hit: Binary, shot_proof: Array<string>) {
 
-        const {F} = await initialize();
-        const parsed_hash = F.toObject(boardHash).toString();
+        const parsed_hash = GameSimulation.F.toObject(boardHash).toString();
         const shot_x = shot[0].toString();  
         const shot_y = shot[1].toString();
         
-        const publicSignals = [parsed_hash, shot_x, shot_y, hit.toString()];
+        const publicSignals = [
+            parsed_hash, 
+            shot_x, 
+            shot_y, 
+            hit.toString()
+        ];
 
         // verify proof locally
         const result_shot = await snarkjs.groth16.verify(
-            verificationKeys.shot, 
+            this.verificationKeys.shot, 
             publicSignals, 
-            proof
+            shot_proof
         )
 
         return result_shot
     }
 
-    async newGame(boardHash: Uint8Array, host_address: string, board_proof: Array<string> ) {
+    async newGame(data: host_BoardData ) {
 
-        try {
+        await this.verifyBoardProof(data.boardHash, data.board_proof);
 
-            await this.verifyBoardProof(boardHash, board_proof);
+        this.gameIndex++;
+        console.log('      game index: ',this.gameIndex);
+        GameSimulation.games[this.gameIndex] = this.gameData;
+        GameSimulation.games[this.gameIndex].players[0] = data.host_address;
+        GameSimulation.games[this.gameIndex].boards[0] = data.boardHash; 
+        GameSimulation.games[this.gameIndex].joinable = true;
 
-            this.gameIndex++;
-            console.log('      game index: ',this.gameIndex);
-            GameSimulation.games[this.gameIndex] = this.gameData;
-            GameSimulation.games[this.gameIndex].players[0] = host_address;
-            GameSimulation.games[this.gameIndex].boards[0] = boardHash; 
-            GameSimulation.games[this.gameIndex].joinable = true;
-
-            //console.log(`${host_address} is hosting a new game!`);
-
-        } catch(error) {
-            console.log("Invalid Board Config!", error)
-        }
-
+        //console.log(`${host_address} is hosting a new game!`);
     }
 
-    async joinGame(gameID: number, boardHash: Uint8Array, player_address: string, board_proof: Array<string>) {
+    async joinGame(data: joiner_BoardData) {
         
-        if (GameSimulation.games[gameID].joinable == true) {
+        if (GameSimulation.games[data.gameID].joinable == true) {
         
-            try {
-                
-                await this.verifyBoardProof(boardHash, board_proof);
+            await this.verifyBoardProof(data.boardHash, data.board_proof);
 
-                GameSimulation.games[gameID].players[1] = player_address;
-                GameSimulation.games[gameID].boards[1] = boardHash;
-                //inGame[player_address] = gameID; 
-                GameSimulation.games[gameID].joinable = false;
+            GameSimulation.games[data.gameID].players[1] = data.joiner_address;
+            GameSimulation.games[data.gameID].boards[1] = data.boardHash; 
+            GameSimulation.games[data.gameID].joinable = false;
 
-                //console.log(`${player_address} has joined a game!`);
-
-            } catch(error) {
-                console.log("Invalid Board Config!",error)
-            }
+            //console.log(`${player_address} has joined a game!`);
 
         } else throw new Error('An Error occured: The game is not joinable!')
         
@@ -147,9 +178,8 @@ class GameSimulation {
         if (noWinner) {
             return turn
         } else {
-            throw new Error('The has already finished!')
+            throw new Error('The game has already finished!')
         }
-
     }
 
     async firstTurn(gameID: number, _shot: Array<number> ) {
@@ -165,29 +195,27 @@ class GameSimulation {
         }
     }
 
-    async turn(gameID: number, _hit: Binary, _shot: Array<number>, shot_proof: Array<string>) {
+    async turn(data: player_TurnData) {
 
-        const game = GameSimulation.games[gameID];
-        const turn = await this.playerTurn(gameID);
+        const game = GameSimulation.games[data.gameID];
+        const turn = await this.playerTurn(data.gameID);
         const boardHash = game.boards[turn];
         const enemy_shot = game.shots[game.turns - 1];
 
         if (game.turns != 0) {
+            
             // check proof
-            try{
-                this.verifyShotProof(boardHash, enemy_shot, _hit, shot_proof);
-            } catch(error) {
-                console.log("Invalid turn proof!", error)
-            }
+            this.verifyShotProof(boardHash, enemy_shot, data._hit, data.shot_proof);
+            
             // update game state
-            game.hits[game.turns - 1] = _hit;
-            if (_hit) game.hitNonce[(game.turns - 1) % 2]++;
+            game.hits[game.turns - 1] = data._hit;
+            if (data._hit) game.hitNonce[(game.turns - 1) % 2]++;
                 
             // check if game over
-            if (game.hitNonce[(game.turns - 1) % 2] >= this.HIT_MAX) this.gameOver(gameID);
+            if (game.hitNonce[(game.turns - 1) % 2] >= this.HIT_MAX) this.gameOver(data.gameID);
             else {
                 // add next shot
-                game.shots[game.turns] = _shot;
+                game.shots[game.turns] = data._shot;
                 game.turns++;
                 
             }
@@ -197,10 +225,9 @@ class GameSimulation {
             
     }
 
-    static async gameState(gameID: number) {
+    async gameState(gameID: number) {
 
-        const {F} = await initialize();
-
+        // to be updated
         const game = GameSimulation.games[gameID];
         
         let players = game.players;
@@ -215,12 +242,12 @@ class GameSimulation {
 
         console.log('\nPlayer1: \n');
         console.log('Address: ', players[0]);
-        console.log('Board: ', F.toObject(boards[0]).toString());
+        console.log('Board: ', GameSimulation.F.toObject(boards[0]).toString());
         console.log('Hit Number: ',hit_history[0]);
 
         console.log('\nPlayer2: \n');
         console.log('Address: ', players[1]);
-        console.log('Board: ', F.toObject(boards[1]).toString());
+        console.log('Board: ', GameSimulation.F.toObject(boards[1]).toString());
         console.log('Hit Number: ',hit_history[1])
 
         
@@ -236,6 +263,12 @@ class GameSimulation {
             : game.players[1];
         }
 
+    }
+
+    finalizeGame(gameID: number) {
+        // deletes the match data
+        GameSimulation.games[gameID] = null;
+        this.gameData = null;
     }
 }
 

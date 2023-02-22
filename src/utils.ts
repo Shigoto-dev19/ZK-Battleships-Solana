@@ -1,25 +1,7 @@
-import { GameSimulation } from "./gameSimulation";
-
 const fs = require('fs');
 const snarkjs = require('snarkjs');
 const { buildMimcSponge } = require("circomlibjs");
 
-
-// verification key json files
-const verificationKeys = {
-    board: JSON.parse(fs.readFileSync('circuits/artifacts/board_verification_key.json')),
-    shot: JSON.parse(fs.readFileSync('circuits/artifacts/shot_verification_key.json'))
-}
-
-const wasm_path = {
-    board: 'circuits/artifacts/setup/board_js/board.wasm',
-    shot: 'circuits/artifacts/setup/shot_js/shot.wasm'
-}
-
-const zkey_path = {
-    board: 'circuits/artifacts/setup/zkey/board_final.zkey',
-    shot: 'circuits/artifacts/setup/zkey/shot_final.zkey'
-}
 // x, y, z (horizontal/ verical orientation) ship placements
 const boards = {
     player1: [
@@ -56,36 +38,6 @@ const shots = {
     ]
 }
 
-// getProof function to avoid block-redeclaration errors
-async function getProof(input, wasm, zkey_path) {                                                                                                    
-
-    const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, wasm, zkey_path);
-    return proof;
-}
-
-/**
- * Initialize new environment for interacting with ZK-Battleship game contracts
- * 
- * @returns {Object} :
- *  - game: ZK-Battleship game simulation object
- *  - mimcSponge: initialized MiMC Sponge ZK-Friendly hash function object from circomlibjs
- *  - boardHashes: hashed versions of alice/ bob boards
- *  - F: initialized ffjavascript BN254 curve object derived from mimcSponge
- */
-async function initialize() {
-    
-    // instantiate a gameSimulation
-    const game = new GameSimulation();
-    // instantiate mimc sponge on bn254 curve + store ffjavascript obj reference
-    const mimcSponge = await buildMimcSponge()
-    // store board hashes for quick use
-    const boardHashes = {
-        player1: await mimcSponge.multiHash(boards.player1.flat()),
-        player2: await mimcSponge.multiHash(boards.player2.flat())
-    }
-    return { game, mimcSponge, boardHashes, F: mimcSponge.F }
-}
-
 // inline ephemeral logging
 function printLog(msg) {
     if (process.stdout.isTTY) {
@@ -96,14 +48,11 @@ function printLog(msg) {
 }
 
 export { 
-    verificationKeys,
-    wasm_path, 
-    zkey_path,
+
     boards,
     shots, 
     snarkjs,
     buildMimcSponge,
     printLog,
-    initialize,
-    getProof
+    fs
 };

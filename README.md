@@ -13,11 +13,11 @@ cargo build --release
 cargo install --path circom
 cd ..
 ```
-### 1. install the neccessary dependencies
+### 1. Install the neccessary dependencies
 ```
 npm install
 ```
-### 2. run POT15 ceremony 
+### 2. Run POT15 ceremony 
 ```
 npm run ptau
 ```
@@ -26,7 +26,7 @@ npm run ptau
 npm run setup
 ```
 
-### 4. Use entire local test suite (circom_tester, snarkjs integration testing, erc2771 integration testing)
+### 4. Use entire local test suite (circom_tester, snarkjs integration testing)
 ```
 npm test
 ```
