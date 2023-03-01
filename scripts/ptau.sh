@@ -5,6 +5,8 @@ set -e
 # Phase 1
 # ... non-circuit-specific stuff
 
+# if circuits/artifacts does not exist, make folder
+[ -d ./circuits/artifacts ] || mkdir ./circuits/artifacts
 # if artifacts/ptau does not exist, make folder
 [ -d ./circuits/artifacts/ptau ] || mkdir ./circuits/artifacts/ptau
 

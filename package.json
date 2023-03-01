@@ -4,9 +4,11 @@
   "description": "ZK Battleship Simulation",
   "main": "index.ts",
   "scripts": {
-    "test": "ts-mocha --timeout 500000 ./test/*.test.ts",
-    "circom:dev": "hardhat circom --deterministic --verbose",
-    "clean-setup": "rm -r ./circuits/artifacts/setup",
+    "test": "ts-mocha --timeout 500000 ./test/game.test.ts",
+    "test-circuits": "ts-mocha --timeout 500000 ./test/circuits.test.ts",
+    "test-poseidon": "ts-mocha --timeout 500000 ./src/poseidon_encryption/test/poseidonEncryption.test.ts",
+    "clean-setup": "rm -r ./circuits/artifacts/setup && rm ./circuits/artifacts/*.json",
+    "clean-artifacts": "rm -r ./circuits/artifacts",
     "ptau": "./scripts/ptau.sh",
     "setup": "./scripts/circuits.sh"
   },
@@ -24,6 +26,7 @@
     "circomlibjs": "^0.1.7",
     "ffjavascript": "^0.2.57",
     "fs": "^0.0.1-security",
+    "maci-crypto": "^1.1.2",
     "snarkjs": "^0.6.1",
     "ts-mocha": "^10.0.0",
     "ts-node": "^10.9.1"

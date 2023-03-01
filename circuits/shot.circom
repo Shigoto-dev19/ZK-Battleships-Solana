@@ -1,9 +1,8 @@
 pragma circom 2.0.3;
 
 include "../node_modules/circomlib/circuits/gates.circom";
-include "../node_modules/circomlib/circuits/mimcsponge.circom";
-include "../node_modules/circomlib/circuits/comparators.circom";
 include "./templates/hitShip.circom";
+include "./templates/poseidonDecrypt.circom";
 
 /*
     determine whether or not a shot hit a given board arrangement
@@ -12,15 +11,29 @@ include "./templates/hitShip.circom";
       - shipHash is the hash of the placement
 */
 template shot() {
-    signal input ships[5][3]; // x, y, z of ship placements
-    signal input hash; // mimcSponge hash on each element of coordinate (15x)
-    signal input shot[2]; // x, y to hitscan
-    signal input hit; // public assertion of hit or miss for coordinates
+    signal input ships[5][3];        // x, y, z of ship placements
+    signal input hash;               // poseidon hash on each element of coordinate (15x)
+    signal input encrypted_shot[4];  // poseidon encrypted shot
+    signal input nonce;              // we choose the nonce as the turn count
+    signal input key[2];             // the ecdh shared key 
+    
+    signal output hit;               // the output of hit or miss for coordinates
 
-    signal _hit[5]; // intermediary OR'd hit registry
-    signal _ors[4]; // or result registry
+    signal pOut[3];   // the output of poseidon decryption
+    signal shot[2];   // x, y to hitscan
+    signal _hit[5];   // intermediary OR'd hit registry
+    signal _ors[4];   // or result registry
 
-    /// SHOT RANGE CHECK ///
+    /// POSEIDON DECRYPT SHOT ///
+    component pDecrypt = PoseidonDecrypt(2);
+    pDecrypt.ciphertext <== encrypted_shot;
+    pDecrypt.nonce <== nonce;
+    pDecrypt.key <== key;
+    pDecrypt.decrypted ==> pOut;
+    shot[0] <== pOut[0];
+    shot[1] <== pOut[1];
+
+    /// SHOT RANGE CHECK ///;
     component ltX = LessThan(4);
     component ltY = LessThan(4);
     ltX.in[0] <== shot[0];
@@ -30,11 +43,10 @@ template shot() {
     ltX.out * ltY.out === 1;
 
     /// HASH INTEGRITY CHECK ///
-    component hasher = MiMCSponge(15, 220, 1);
+    component hasher = Poseidon(15);
     for (var i = 0; i < 15; i++)
-        hasher.ins[i] <== ships[i \ 3][i % 3];
-    hasher.k <== 0;
-    hash === hasher.outs[0];
+        hasher.inputs[i] <== ships[i \ 3][i % 3];
+    hash === hasher.out;
 
     /// HIT SCAN ///
     var lengths[5] = [5, 4, 3, 3, 2];
@@ -63,8 +75,8 @@ template shot() {
         _ors[i] <== ors[i].out;
     }
     
-    /// HIT ASSERTION CHECK ///
-    hit === ors[3].out;
+    /// HIT ASSIGNMENT ///
+    hit <== ors[3].out;
 }
 
-component main { public [hash, shot, hit] } = shot();
+component main { public [hash, encrypted_shot, nonce] } = shot();

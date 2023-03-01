@@ -27,6 +27,16 @@ npm run setup
 ```
 
 ### 4. Use entire local test suite (circom_tester, snarkjs integration testing)
-```
-npm test
-```
+
+`npm test` to run game simulation tests.
+
+`npm run test-circuits` to run board and shot circuit test.
+
+`npm run test-poseidon` to run tests for poseidon encryption
+
+### 5. Clean Circuit Artifacts
+
+`npm run clean-artifacts` to clean all circuit artifacts.
+
+`npm run clean-setup` to clean circuit setup excluding ptau files.
+

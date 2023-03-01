@@ -1,18 +1,63 @@
-const { assert } = require("chai");
-const { boards, shots, verificationKeys, buildProofArgs } = require('../src/utils')
-const path = require('path')
-const { wasm: wasm_tester, wasm } = require('circom_tester')
-const { buildMimcSponge } = require('circomlibjs')
+const { assert, expect } = require("chai");
+const { snarkjs, fs, buildPoseidonOpt } = require('../src/utils');
+const path = require('path');
+const { wasm: wasm_tester, wasm } = require('circom_tester');
+import { poseidonEncrypt, genRandomNonce } from '../src/poseidon_encryption/index';
+import { genKeypair } from 'maci-crypto';
+
+function encryptShot(shot: Array<number>) {
+    
+    const key = genKeypair().pubKey;
+    const nonce = genRandomNonce();
+    const encrypted_shot = poseidonEncrypt(
+        shot.map((x) => BigInt(x)), 
+        key, 
+        nonce 
+    );
+    return {
+        encrypted_shot: encrypted_shot.map((x) => x.toString()),
+        nonce: nonce.toString(),
+        key: key.map((x) => x.toString())
+    }
+}
+// x, y, z (horizontal/ verical orientation) ship placements
+const boards = {
+    player1: [
+        ["0", "0", "0"],
+        ["0", "1", "0"],
+        ["0", "2", "0"],
+        ["0", "3", "0"],
+        ["0", "4", "0"]
+    ],
+    player2: [
+        ["1", "0", "0"],
+        ["1", "1", "0"],
+        ["1", "2", "0"],
+        ["1", "3", "0"],
+        ["1", "4", "0"]
+    ]
+}
+// wasm path for shot circuit 
+const wasm_shot_path = 'circuits/artifacts/setup/shot_js/shot.wasm';
+// zkey paths for shot circuit 
+const zkey_shot_path = 'circuits/artifacts/setup/zkey/shot_final.zkey';
+// vkey paths for board and shot circuit respectively
+const vkey_board_path = 'circuits/artifacts/board_verification_key.json';
+const vkey_shot_path = 'circuits/artifacts/shot_verification_key.json';
+const verificationKeys = {
+    board: JSON.parse(fs.readFileSync(vkey_board_path)),
+    shot: JSON.parse(fs.readFileSync(vkey_shot_path))
+}
 
 // these board samples were reached using the battlezips front end
 describe('Test circuits', async () => {
 
-    let mimcSponge, F
+    let poseidon, F
     let boardCircuit, shotCircuit
 
     before(async () => {
-        mimcSponge = await buildMimcSponge() // mimcSponge hash function using bn128
-        F = mimcSponge.F //bn128 ff lib
+        poseidon = await buildPoseidonOpt() // poseidon hash function using bn128
+        F = poseidon.F //bn128 ff lib
         boardCircuit = await wasm_tester(path.resolve('./circuits/board.circom'))
         shotCircuit = await wasm_tester(path.resolve('./circuits/shot.circom'))
     })
@@ -26,7 +71,7 @@ describe('Test circuits', async () => {
                     [0, 3, 0],
                     [0, 4, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 const witness = await boardCircuit.calculateWitness({
                     ships,
                     hash: F.toObject(hash)
@@ -41,7 +86,7 @@ describe('Test circuits', async () => {
                     [6, 8, 0],
                     [7, 7, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 const witness = await boardCircuit.calculateWitness({
                     ships,
                     hash: F.toObject(hash)
@@ -56,7 +101,7 @@ describe('Test circuits', async () => {
                     [5, 9, 0],
                     [1, 8, 1]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 const witness = await boardCircuit.calculateWitness({
                     ships,
                     hash: F.toObject(hash)
@@ -73,7 +118,7 @@ describe('Test circuits', async () => {
                     [0, 3, 0],
                     [0, 4, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 try {
                     await boardCircuit.calculateWitness({
                         ships,
@@ -92,7 +137,7 @@ describe('Test circuits', async () => {
                     [0, 3, 0],
                     [0, 4, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 try {
                     await boardCircuit.calculateWitness({
                         ships,
@@ -111,7 +156,7 @@ describe('Test circuits', async () => {
                     [0, 3, 0],
                     [0, 4, 2]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 try {
                     await boardCircuit.calculateWitness({
                         ships,
@@ -132,7 +177,7 @@ describe('Test circuits', async () => {
                     [0, 3, 0],
                     [0, 4, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 try {
                     await boardCircuit.calculateWitness({
                         ships,
@@ -151,7 +196,7 @@ describe('Test circuits', async () => {
                     [6, 8, 0],
                     [7, 7, 1]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 try {
                     await boardCircuit.calculateWitness({
                         ships,
@@ -170,7 +215,7 @@ describe('Test circuits', async () => {
                     [5, 9, 0],
                     [1, 8, 1]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 try {
                     await boardCircuit.calculateWitness({
                         ships,
@@ -191,7 +236,7 @@ describe('Test circuits', async () => {
                     [5, 9, 0],
                     [1, 8, 1]
                 ]
-                const hash = await mimcSponge.multiHash(boards.player1.flat())
+                const hash = await poseidon(boards.player1.flat())
                 try {
                     await boardCircuit.calculateWitness({
                         ships,
@@ -214,15 +259,18 @@ describe('Test circuits', async () => {
                     [0, 3, 0],
                     [0, 4, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 const shot = [0, 0]
-                const hit = 1
-                const witness = await shotCircuit.calculateWitness({
+                const encryption = encryptShot(shot)
+                const input_shot = {
                     ships,
                     hash: F.toObject(hash),
-                    shot,
-                    hit
-                })
+                    encrypted_shot: encryption.encrypted_shot,
+                    nonce: encryption.nonce,
+                    key: encryption.key
+
+                }
+                const witness = await shotCircuit.calculateWitness(input_shot)
                 await shotCircuit.assertOut(witness, {})
             })
             it("Prove valid turn 2: hit off head on z = 0", async () => {
@@ -233,15 +281,18 @@ describe('Test circuits', async () => {
                     [5, 6, 0],
                     [8, 0, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 const shot = [4, 2]
-                const hit = 1
-                const witness = await shotCircuit.calculateWitness({
+                const encryption = encryptShot(shot)
+                const input_shot = {
                     ships,
                     hash: F.toObject(hash),
-                    shot,
-                    hit
-                })
+                    encrypted_shot: encryption.encrypted_shot,
+                    nonce: encryption.nonce,
+                    key: encryption.key
+
+                }
+                const witness = await shotCircuit.calculateWitness(input_shot)
                 await shotCircuit.assertOut(witness, {})
             })
             it("Prove valid turn 3: hit off head on z = 1", async () => {
@@ -252,15 +303,18 @@ describe('Test circuits', async () => {
                     [1, 7, 1],
                     [3, 8, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 const shot = [4, 5]
-                const hit = 1
-                const witness = await shotCircuit.calculateWitness({
+                const encryption = encryptShot(shot)
+                const input_shot = {
                     ships,
                     hash: F.toObject(hash),
-                    shot,
-                    hit
-                })
+                    encrypted_shot: encryption.encrypted_shot,
+                    nonce: encryption.nonce,
+                    key: encryption.key
+
+                }
+                const witness = await shotCircuit.calculateWitness(input_shot)
                 await shotCircuit.assertOut(witness, {})
             })
             it("Prove valid turn 4: miss with no collision", async () => {
@@ -271,15 +325,18 @@ describe('Test circuits', async () => {
                     [0, 3, 0],
                     [0, 4, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 const shot = [9, 5]
-                const hit = 0
-                const witness = await shotCircuit.calculateWitness({
+                const encryption = encryptShot(shot)
+                const input_shot = {
                     ships,
                     hash: F.toObject(hash),
-                    shot,
-                    hit
-                })
+                    encrypted_shot: encryption.encrypted_shot,
+                    nonce: encryption.nonce,
+                    key: encryption.key
+
+                }
+                const witness = await shotCircuit.calculateWitness(input_shot)
                 await shotCircuit.assertOut(witness, {})
             })
             it("Prove valid turn 5: horizontal muxxed miss with vertical hit", async () => {
@@ -291,15 +348,18 @@ describe('Test circuits', async () => {
                     [1, 7, 1],
                     [3, 8, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 const shot = [2, 1]
-                const hit = 0
-                const witness = await shotCircuit.calculateWitness({
+                const encryption = encryptShot(shot)
+                const input_shot = {
                     ships,
                     hash: F.toObject(hash),
-                    shot,
-                    hit
-                })
+                    encrypted_shot: encryption.encrypted_shot,
+                    nonce: encryption.nonce,
+                    key: encryption.key
+
+                }
+                const witness = await shotCircuit.calculateWitness(input_shot)
                 await shotCircuit.assertOut(witness, {})
             })
             it("Prove valid turn 6: vertical muxxed miss with horizontal hit", async () => {
@@ -311,15 +371,18 @@ describe('Test circuits', async () => {
                     [5, 6, 0],
                     [8, 0, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 const shot = [1, 3]
-                const hit = 0
-                const witness = await shotCircuit.calculateWitness({
+                const encryption = encryptShot(shot)
+                const input_shot = {
                     ships,
                     hash: F.toObject(hash),
-                    shot,
-                    hit
-                })
+                    encrypted_shot: encryption.encrypted_shot,
+                    nonce: encryption.nonce,
+                    key: encryption.key
+
+                }
+                const witness = await shotCircuit.calculateWitness(input_shot)
                 await shotCircuit.assertOut(witness, { })
             })
         })
@@ -332,18 +395,24 @@ describe('Test circuits', async () => {
                     [0, 3, 0],
                     [0, 4, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 const shot = [-1, 3]
-                const hit = 0
+                
                 try {
-                    const exercise = await shotCircuit.calculateWitness({
-                        ships,
-                        hash: F.toObject(hash),
-                        shot,
-                        hit
-                    });
+                    const encryption = encryptShot(shot)
+                    const input_shot = {
+                    ships,
+                    hash: F.toObject(hash),
+                    encrypted_shot: encryption.encrypted_shot,
+                    nonce: encryption.nonce,
+                    key: encryption.key
+
+                }
+                const witness = await shotCircuit.calculateWitness({
+                    input_shot
+                })
                     let expected = Error;
-                    assert.throws(exercise, expected);
+                    assert.throws(witness, expected);
                 } catch (err) {}
             })
             it("Shot range violation turn 2: x out of bounds", async () => {
@@ -354,16 +423,21 @@ describe('Test circuits', async () => {
                     [0, 3, 0],
                     [0, 4, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 const shot = [10, 3]
-                const hit = 0
+                
+                const encryption = encryptShot(shot)
+                const input_shot = {
+                    ships,
+                    hash: F.toObject(hash),
+                    encrypted_shot: encryption.encrypted_shot,
+                    nonce: encryption.nonce,
+                    key: encryption.key
+
+                }
+                
                 try {
-                    await shotCircuit.calculateWitness({
-                        ships,
-                        hash: F.toObject(hash),
-                        shot,
-                        hit
-                    });
+                    await shotCircuit.calculateWitness(input_shot)
                     assert(false);
                 } catch (err) {
                     assert(err.message.includes("Assert Failed"));
@@ -377,16 +451,21 @@ describe('Test circuits', async () => {
                     [0, 3, 0],
                     [0, 4, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 const shot = [0, 13]
-                const hit = 0
+                
+                const encryption = encryptShot(shot)
+                const input_shot = {
+                    ships,
+                    hash: F.toObject(hash),
+                    encrypted_shot: encryption.encrypted_shot,
+                    nonce: encryption.nonce,
+                    key: encryption.key
+
+                }
+                
                 try {
-                    await shotCircuit.calculateWitness({
-                        ships,
-                        hash: F.toObject(hash),
-                        shot,
-                        hit
-                    });
+                    await shotCircuit.calculateWitness(input_shot)
                     assert(false);
                 } catch (err) {
                     assert(err.message.includes("Assert Failed"));
@@ -394,7 +473,7 @@ describe('Test circuits', async () => {
             })
         })
         describe("False hit assertion", async () => {
-            it("Hit assertion violation turn 1: head hit but report miss", async () => {
+            it("Tampered Hit output assertion violation turn 1: head hit but report miss", async () => {
                 const ships = [
                     [0, 0, 0],
                     [0, 1, 0],
@@ -402,22 +481,45 @@ describe('Test circuits', async () => {
                     [0, 3, 0],
                     [0, 4, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 const shot = [0, 0]
-                const hit = 0
-                try {
-                    await shotCircuit.calculateWitness({
-                        ships,
-                        hash: F.toObject(hash),
-                        shot,
-                        hit
-                    });
-                    assert(false);
-                } catch (err) {
-                    assert(err.message.includes("Assert Failed"));
+                
+                // prepare shot circuit input
+                const encryption = encryptShot(shot)
+                const input_shot = {
+                    ships,
+                    hash: F.toObject(hash),
+                    encrypted_shot: encryption.encrypted_shot,
+                    nonce: encryption.nonce,
+                    key: encryption.key
+
                 }
+                
+                // compute witness and run through groth16 circuit for proof / signals
+                const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+                    input_shot,
+                    wasm_shot_path,
+                    zkey_shot_path
+                )
+                // alter with the successful hit to miss
+                const false_publicSignals = [
+                    '0',
+                    F.toObject(hash).toString(), 
+                    shot[0].toString(), 
+                    shot[1].toString()     
+                ];
+        
+                // verify proof with altered hit as missed
+                const verify_shot = await snarkjs.groth16.verify(
+                    verificationKeys.shot, 
+                    false_publicSignals, 
+                    proof
+                )
+                expect(publicSignals[0]).to.be.equals('1');
+                expect(verify_shot).to.be.false;
+                
             })
-            it("Hit assertion violation turn 2: head miss but report hit", async () => {
+            it("Tampered Hit output assertion violation turn 2: head miss but report hit", async () => {
                 const ships = [
                     [0, 0, 0],
                     [0, 1, 0],
@@ -425,22 +527,44 @@ describe('Test circuits', async () => {
                     [0, 3, 0],
                     [0, 4, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 const shot = [6, 6]
-                const hit = 1
-                try {
-                    await shotCircuit.calculateWitness({
-                        ships,
-                        hash: F.toObject(hash),
-                        shot,
-                        hit
-                    });
-                    assert(false);
-                } catch (err) {
-                    assert(err.message.includes("Assert Failed"));
+                
+                // prepare shot circuit input
+                const encryption = encryptShot(shot)
+                const input_shot = {
+                    ships,
+                    hash: F.toObject(hash),
+                    encrypted_shot: encryption.encrypted_shot,
+                    nonce: encryption.nonce,
+                    key: encryption.key
+
                 }
+                
+                // compute witness and run through groth16 circuit for proof / signals
+                const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+                    input_shot,
+                    wasm_shot_path,
+                    zkey_shot_path
+                )
+                // alter with missed shot to hit
+                const false_publicSignals = [
+                    '1',
+                    F.toObject(hash).toString(), 
+                    shot[0].toString(), 
+                    shot[1].toString()     
+                ];
+        
+                // verify proof with altered miss as hit
+                const verify_shot = await snarkjs.groth16.verify(
+                    verificationKeys.shot, 
+                    false_publicSignals, 
+                    proof
+                )
+                expect(publicSignals[0]).to.be.equals('0');
+                expect(verify_shot).to.be.false;
             })
-            it("Hit assertion violation turn 3: z=0 hit but report miss", async () => {
+            it("Tampered Hit output assertion violation turn 3: z=0 hit but report miss", async () => {
                 const ships = [
                     [1, 2, 0],
                     [2, 8, 0],
@@ -448,22 +572,44 @@ describe('Test circuits', async () => {
                     [5, 6, 0],
                     [8, 0, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 const shot = [3, 2]
-                const hit = 0
-                try {
-                    await shotCircuit.calculateWitness({
-                        ships,
-                        hash: F.toObject(hash),
-                        shot,
-                        hit
-                    });
-                    assert(false);
-                } catch (err) {
-                    assert(err.message.includes("Assert Failed"));
+                
+                // prepare shot circuit input
+                const encryption = encryptShot(shot)
+                const input_shot = {
+                    ships,
+                    hash: F.toObject(hash),
+                    encrypted_shot: encryption.encrypted_shot,
+                    nonce: encryption.nonce,
+                    key: encryption.key
+
                 }
+                
+                // compute witness and run through groth16 circuit for proof / signals
+                const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+                    input_shot,
+                    wasm_shot_path,
+                    zkey_shot_path
+                )
+                // alter with the successful hit to miss 
+                const false_publicSignals = [
+                    '0',
+                    F.toObject(hash).toString(), 
+                    shot[0].toString(), 
+                    shot[1].toString()     
+                ];
+        
+                // verify proof with altered hit as missed
+                const verify_shot = await snarkjs.groth16.verify(
+                    verificationKeys.shot, 
+                    false_publicSignals, 
+                    proof
+                )
+                expect(publicSignals[0]).to.be.equals('1');
+                expect(verify_shot).to.be.false;
             })
-            it("Hit assertion violation turn 4: z=0 miss but report hit", async () => {
+            it("Tampered Hit output assertion violation turn 4: z=0 miss but report hit", async () => {
                 const ships = [
                     [1, 1, 1],
                     [5, 1, 1],
@@ -471,22 +617,44 @@ describe('Test circuits', async () => {
                     [1, 7, 1],
                     [3, 8, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 const shot = [2, 1]
-                const hit = 1
-                try {
-                    await shotCircuit.calculateWitness({
-                        ships,
-                        hash: F.toObject(hash),
-                        shot,
-                        hit
-                    });
-                    assert(false);
-                } catch (err) {
-                    assert(err.message.includes("Assert Failed"));
+                
+                // prepare shot circuit input
+                const encryption = encryptShot(shot)
+                const input_shot = {
+                    ships,
+                    hash: F.toObject(hash),
+                    encrypted_shot: encryption.encrypted_shot,
+                    nonce: encryption.nonce,
+                    key: encryption.key
+
                 }
+                
+                // compute witness and run through groth16 circuit for proof / signals
+                const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+                    input_shot,
+                    wasm_shot_path,
+                    zkey_shot_path
+                )
+                // alter with missed shot to hit
+                const false_publicSignals = [
+                    '1',
+                    F.toObject(hash).toString(), 
+                    shot[0].toString(), 
+                    shot[1].toString()     
+                ];
+        
+                // verify proof with altered miss as hit
+                const verify_shot = await snarkjs.groth16.verify(
+                    verificationKeys.shot, 
+                    false_publicSignals, 
+                    proof
+                )
+                expect(publicSignals[0]).to.be.equals('0');
+                expect(verify_shot).to.be.false;
             })
-            it("Hit assertion violation turn 5: z=1 hit but report miss", async () => {
+            it("Tampered Hit output assertion violation turn 5: z=1 hit but report miss", async () => {
                 const ships = [
                     [1, 1, 1],
                     [5, 1, 1],
@@ -494,22 +662,44 @@ describe('Test circuits', async () => {
                     [1, 7, 1],
                     [3, 8, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 const shot = [1, 3]
-                const hit = 0
-                try {
-                    await shotCircuit.calculateWitness({
-                        ships,
-                        hash: F.toObject(hash),
-                        shot,
-                        hit
-                    });
-                    assert(false);
-                } catch (err) {
-                    assert(err.message.includes("Assert Failed"));
+                
+                // prepare shot circuit input
+                const encryption = encryptShot(shot)
+                const input_shot = {
+                    ships,
+                    hash: F.toObject(hash),
+                    encrypted_shot: encryption.encrypted_shot,
+                    nonce: encryption.nonce,
+                    key: encryption.key
+
                 }
+                
+                // compute witness and run through groth16 circuit for proof / signals
+                const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+                    input_shot,
+                    wasm_shot_path,
+                    zkey_shot_path
+                )
+                // alter with the successful hit to miss 
+                const false_publicSignals = [
+                    '0',
+                    F.toObject(hash).toString(), 
+                    shot[0].toString(), 
+                    shot[1].toString()     
+                ];
+        
+                // verify proof with altered hit as missed
+                const verify_shot = await snarkjs.groth16.verify(
+                    verificationKeys.shot, 
+                    false_publicSignals, 
+                    proof
+                )
+                expect(publicSignals[0]).to.be.equals('1');
+                expect(verify_shot).to.be.false;
             })
-            it("Hit assertion violation turn 6: z=1 miss but report hit", async () => {
+            it("Tampered Hit output assertion violation turn 6: z=1 miss but report hit", async () => {
                 const ships = [
                     [1, 2, 0],
                     [2, 8, 0],
@@ -517,20 +707,42 @@ describe('Test circuits', async () => {
                     [5, 6, 0],
                     [8, 0, 0]
                 ]
-                const hash = await mimcSponge.multiHash(ships.flat())
+                const hash = await poseidon(ships.flat())
                 const shot = [1, 3]
-                const hit = 1
-                try {
-                    await shotCircuit.calculateWitness({
-                        ships,
-                        hash: F.toObject(hash),
-                        shot,
-                        hit
-                    });
-                    assert(false);
-                } catch (err) {
-                    assert(err.message.includes("Assert Failed"));
+                
+                // prepare shot circuit input
+                const encryption = encryptShot(shot)
+                const input_shot = {
+                    ships,
+                    hash: F.toObject(hash),
+                    encrypted_shot: encryption.encrypted_shot,
+                    nonce: encryption.nonce,
+                    key: encryption.key
+
                 }
+                
+                // compute witness and run through groth16 circuit for proof / signals
+                const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+                    input_shot,
+                    wasm_shot_path,
+                    zkey_shot_path
+                )
+                // alter with missed shot to hit
+                const false_publicSignals = [
+                    '1',
+                    F.toObject(hash).toString(), 
+                    shot[0].toString(), 
+                    shot[1].toString()     
+                ];
+        
+                // verify proof with altered miss as hit
+                const verify_shot = await snarkjs.groth16.verify(
+                    verificationKeys.shot, 
+                    false_publicSignals, 
+                    proof
+                )
+                expect(publicSignals[0]).to.be.equals('0');
+                expect(verify_shot).to.be.false;
             })
         })
         describe("Hash Integrity Checks", async () => {
@@ -542,16 +754,20 @@ describe('Test circuits', async () => {
                     [0, 3, 0],
                     [5, 5, 0]
                 ]
-                const hash = await mimcSponge.multiHash(boards.player1.flat())
+                const hash = await poseidon(boards.player1.flat())
                 const shot = [0, 0]
-                const hit = 0
+                const encryption = encryptShot(shot)
+                const input_shot = {
+                    ships,
+                    hash: F.toObject(hash),
+                    encrypted_shot: encryption.encrypted_shot,
+                    nonce: encryption.nonce,
+                    key: encryption.key
+
+                }
+                
                 try {
-                    await shotCircuit.calculateWitness({
-                        ships,
-                        hash: F.toObject(hash),
-                        shot,
-                        hit
-                    });
+                    await shotCircuit.calculateWitness(input_shot)
                     assert(false);
                 } catch (err) {
                     assert(err.message.includes("Assert Failed"));

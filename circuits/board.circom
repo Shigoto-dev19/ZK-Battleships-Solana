@@ -3,7 +3,7 @@ pragma circom 2.0.3;
 include "./templates/shipRange.circom";
 include "./templates/placeShip.circom";
 include "../node_modules/circomlib/circuits/bitify.circom";
-include "../node_modules/circomlib/circuits/mimcsponge.circom";
+include "../node_modules/circomlib/circuits/poseidon.circom";
 
 /*
     Validate whether or not a ship placement on a board is valid
@@ -37,11 +37,10 @@ template board() {
     }
 
     /// HASH INTEGRITY CHECK ///
-    component hasher = MiMCSponge(15, 220, 1);
+    component hasher = Poseidon(15);
     for (var i = 0; i < 15; i++)
-        hasher.ins[i] <== ships[i \ 3][i % 3];
-    hasher.k <== 0;
-    hash === hasher.outs[0];
+        hasher.inputs[i] <== ships[i \ 3][i % 3];
+    hash === hasher.out;
 }
 
 component main { public [hash] } = board();

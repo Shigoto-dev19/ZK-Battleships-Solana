@@ -23,7 +23,7 @@ template ShipRange(n) {
     lt[1] = LessThan(4);
     lt[1].in[0] <== ship[1];
     lt[1].in[1] <== 10;
-    // make bool for range complaince to constain
+    // make bool for range complaince to constrain
     isOk[0] <== lt[0].out * lt[1].out;
     /// VERTICAL (z = 1) ///
     // x < 10
@@ -34,7 +34,7 @@ template ShipRange(n) {
     lt[3] = LessThan(4);
     lt[3].in[0] <== ship[1] + (n - 1);
     lt[3].in[1] <== 10;
-    // make bool for range complaince to constain
+    // make bool for range complaince to constrain
     isOk[1] <== lt[2].out * lt[3].out;
     /// SIGNAL MUX ///
     // constrain z to binary
