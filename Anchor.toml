@@ -2,13 +2,13 @@
 seeds = false
 skip-lint = false
 [programs.localnet]
-zk_battleship = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+zk_battleship = "5Jt2pEktgDMHWpy6aEUVx5Kt7XfLKpA1oahAyoLA7i98"
 
 [registry]
-url = "https://api.apr.dev"
+url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "/home/mahmoud/.config/solana/id.json"
 
 [scripts]

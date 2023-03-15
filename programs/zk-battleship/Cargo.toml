@@ -17,5 +17,13 @@ default = []
 
 [dependencies]
 anchor-lang = "0.26.0"
-num-traits = "0.2"
-num-derive = "0.3"
+#solana
+solana-program = "1.15.2"
+# Light Deps
+groth16-solana = "0.0.1"
+ark-ec = "0.3.0"
+ark-ff = "0.3.0"
+ark-bn254 = "0.3.0"
+getrandom = { version = "0.2.2", features = ["custom"] }
+
+

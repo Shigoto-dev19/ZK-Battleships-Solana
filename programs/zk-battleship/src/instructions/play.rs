@@ -2,7 +2,7 @@ use crate::errors::ZKBattleshipError;
 use crate::state::game::*;
 use anchor_lang::prelude::*;
 
-pub fn play(ctx: Context<Play>, data: &PlayerTurnData) -> Result<()> {
+pub fn play(ctx: Context<Play>, player_data: PlayerTurnData) -> Result<()> {
     let game = &mut ctx.accounts.game;
 
     require_keys_eq!(
@@ -10,8 +10,8 @@ pub fn play(ctx: Context<Play>, data: &PlayerTurnData) -> Result<()> {
         ctx.accounts.player.key(),
         ZKBattleshipError::NotPlayersTurn
     );
-
-    game.play(&data)
+    
+    game.play(player_data)
 }
 
 #[derive(Accounts)]

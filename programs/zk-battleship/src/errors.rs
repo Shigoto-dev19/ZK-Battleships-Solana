@@ -10,4 +10,7 @@ pub enum ZKBattleshipError {
     BoardZKVerificationFailed,
     ShotZKVerificationFailed,
     GameNotJoinable,
+    FirstTurnShouldBePlayed,
+    GameStillOngoing,
+    NotPlayer
 }

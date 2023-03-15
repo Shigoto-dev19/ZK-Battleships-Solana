@@ -2,10 +2,16 @@
             "compilerOptions": {
               "types": ["mocha", "chai"],
               "typeRoots": ["./node_modules/@types"],
-              "lib": ["es2015"],
+              "lib": ["es2015", "dom"],
               "module": "commonjs",
               "target": "es6",
-              "esModuleInterop": true
+              "esModuleInterop": true,
+              "isolatedModules": true
+            },
+            "ts-node": {
+              "transpileOnly": true,
+              "files": true,
+              "experimentalResolver": true
             }
           }
           
