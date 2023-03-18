@@ -75,7 +75,7 @@ template shot() {
         _ors[i] <== ors[i].out;
     }
     
-    /// HIT ASSIGNMENT ///
+    /// HIT ASSERTION ///
     hit === ors[3].out;
 }
 

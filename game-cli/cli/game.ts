@@ -4,26 +4,8 @@ import { ZkBattleship } from '../../target/types/zk_battleship';
 import { BattleShipClient } from '../../src/battleshipClient';
 
 
-// x, y, z (horizontal/ verical orientation) ship placements
-const game1_boards = {
-    player1: [
-        ["0", "0", "0"],
-        ["0", "1", "0"],
-        ["0", "2", "0"],
-        ["0", "3", "0"],
-        ["0", "4", "0"]
-    ],
-    player2: [
-        ["1", "0", "0"],
-        ["1", "1", "0"],
-        ["1", "2", "0"],
-        ["1", "3", "0"],
-        ["1", "4", "0"]
-    ]
-}
-
 /// instantiate program and client class
-async function HostGame(board: string[][]) {
+async function hostGame(board: string[][]) {
 
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
@@ -38,7 +20,7 @@ async function HostGame(board: string[][]) {
   // instantiate program and client class
   let host = await BattleShipClient.initialize(
       playerOne.publicKey.toString(),
-      game1_boards.player1
+      board
   );
 
   const host_data = await host.newGameData();
@@ -188,7 +170,7 @@ async function fetchMostRecentAccount(program: Program, provider: anchor.AnchorP
 }
 
 export {
-  HostGame,
+  hostGame,
   joinGame,
   hostAttack,
   joinerAttack

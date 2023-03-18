@@ -7,7 +7,7 @@ import { BattleShipClient } from '../../src/battleshipClient';
 import * as anchor from '@project-serum/anchor';
 import { AnchorError, Program } from '@project-serum/anchor';
 import { ZkBattleship } from '../../target/types/zk_battleship';
-import { HostGame, joinGame, hostAttack, joinerAttack} from './game';
+import { hostGame, joinGame, hostAttack, joinerAttack} from './game';
 import { Spinner } from 'clui';
 import { isCoordinateValid, parseCoordinates } from './validateCoords';
 
@@ -24,22 +24,23 @@ let joiner;
 let playerTwo;
 
 // x, y, z (horizontal/ verical orientation) ship placements
-const game1_boards = {
+// x, y, z (horizontal/ verical orientation) ship placements
+const game2_boards = {
     player1: [
-        ["0", "0", "0"],
-        ["0", "1", "0"],
-        ["0", "2", "0"],
-        ["0", "3", "0"],
-        ["0", "4", "0"]
+        ["4", "2", "1"],
+        ["1", "1", "0"],
+        ["8", "6", "1"],
+        ["3", "9", "0"],
+        ["6", "3", "1"]
     ],
     player2: [
-        ["1", "0", "0"],
-        ["1", "1", "0"],
-        ["1", "2", "0"],
-        ["1", "3", "0"],
-        ["1", "4", "0"]
+        ["1", "8", "0"],
+        ["0", "3", "1"],
+        ["3", "1", "1"],
+        ["8", "5", "1"],
+        ["8", "9", "0"]
     ]
-}
+  }
 
 /* Clears Term & ASCII ART! */
 function clearTerm(menuCallback, init?) {
@@ -109,7 +110,7 @@ function hostMenu() {
     prompt(questions).then(menu => {
         switch (menu.selection) {
             case ' Create New Game':
-                HostGame(game1_boards.player1).then((result) => {
+                hostGame(game2_boards.player1).then((result) => {
                     let{ _host, _gameState, _gamePK, _program, _playerOne } = result
                     host = _host
                     gameState = _gameState
@@ -145,7 +146,7 @@ function joinerMenu() {
     prompt(questions).then(menu => {
         switch (menu.selection) {
             case ' Join Game':
-                joinGame(game1_boards.player2, game_publicKey).then((result) => {
+                joinGame(game2_boards.player2, game_publicKey).then((result) => {
                     let {_joiner, _playerTwo, _program, _gameState} = result
                     joiner = _joiner
                     playerTwo = _playerTwo
